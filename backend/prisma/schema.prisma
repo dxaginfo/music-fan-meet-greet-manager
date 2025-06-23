@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            String    // admin, artist, manager, fan
+  profileImageUrl String?   
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  artist          Artist?
+  organizedEvents Event[]   @relation("EventOrganizer")
+  tickets         Ticket[]
+  media           Media[]
+  feedback        Feedback[]
+  notifications   Notification[]
+}
+
+model Artist {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  artistName        String
+  bio               String?  
+  genre             String?
+  socialMediaLinks  Json?    // Stored as JSON
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events            Event[]
+}
+
+model Event {
+  id           String    @id @default(uuid())
+  title         String
+  description   String
+  artistId      String
+  organizerId   String
+  location      String?
+  isVirtual     Boolean   @default(false)
+  eventDate     DateTime
+  startTime     String
+  endTime       String
+  capacity      Int
+  status        String    // draft, published, canceled, completed
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  artist        Artist    @relation(fields: [artistId], references: [id])
+  organizer     User      @relation("EventOrganizer", fields: [organizerId], references: [id])
+  tickets       Ticket[]
+  queueItems    Queue[]
+  media         Media[]
+  feedback      Feedback[]
+  notifications Notification[]
+}
+
+model Ticket {
+  id           String    @id @default(uuid())
+  eventId      String
+  userId       String
+  ticketType   String    // standard, vip, backstage
+  price        Float
+  purchaseDate DateTime  @default(now())
+  qrCode       String    @unique
+  isUsed       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  event        Event     @relation(fields: [eventId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+  queueItem    Queue?
+}
+
+model Queue {
+  id           String    @id @default(uuid())
+  eventId      String
+  ticketId     String    @unique
+  position     Int
+  status       String    // waiting, in_progress, completed, no_show
+  checkInTime  DateTime?
+  startTime    DateTime?
+  endTime      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  event        Event     @relation(fields: [eventId], references: [id])
+  ticket       Ticket    @relation(fields: [ticketId], references: [id])
+}
+
+model Media {
+  id           String    @id @default(uuid())
+  eventId      String
+  userId       String?
+  mediaType    String    // photo, video, document
+  url          String
+  thumbnailUrl String?
+  isPublic     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  event        Event     @relation(fields: [eventId], references: [id])
+  user         User?     @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id           String    @id @default(uuid())
+  userId       String
+  eventId      String
+  type         String    // reminder, update, thank_you
+  content      String
+  isRead       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  user         User      @relation(fields: [userId], references: [id])
+  event        Event     @relation(fields: [eventId], references: [id])
+}
+
+model Feedback {
+  id           String    @id @default(uuid())
+  eventId      String
+  userId       String
+  rating       Int       // 1-5
+  comment      String?
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  event        Event     @relation(fields: [eventId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+}
